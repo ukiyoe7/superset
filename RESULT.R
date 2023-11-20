@@ -83,7 +83,10 @@ View(metas_setores)
 
 
 alcance_result <-
-left_join(new_result2,metas_setores ,by="SETOR") %>% View()
+left_join(new_result2,metas_setores ,by="SETOR") %>% mutate(ALCANCE=round(((VALOR/METAS)*100),2))
+
+
+View(alcance_result)
 
 
 
