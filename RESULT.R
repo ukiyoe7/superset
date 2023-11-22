@@ -1,7 +1,8 @@
-## NEW RESULT SUPERSET
+##  RESULT SUPERSET
 ## 11.2023
 ## SANDRO JAKOSKA
 
+## libraries & connections =============================================
 
 library(DBI)
 library(dplyr)
@@ -9,15 +10,13 @@ library(readr)
 library(lubridate)
 library(stringr)
 
-con2 <- dbConnect(odbc::odbc(), "repro",encoding="Latin1")
+con_sgo <- dbConnect(odbc::odbc(), "repro",encoding="Latin1")
 
-
+con_spset <- dbConnect(odbc::odbc(), "dbcomercial", encoding = "UTF-8")
 
 ## RESULT ===============================================
 
-
-
-new_result <- dbGetQuery(con2, statement = read_file('RESULT.sql')) 
+new_result <- dbGetQuery(con_sgo, statement = read_file('RESULT.sql')) 
 
 View(new_result)
 
@@ -111,7 +110,7 @@ View(metas_setores)
 
 
 
-## REACH  ============================================
+## ALCANCE  ============================================
 
 alcance_result <-
  left_join(new_result2,
@@ -131,9 +130,9 @@ View(alcance_result)
 
 
 
-## EXPECTED  ============================================
+## ESPERADO  ============================================
 
-## holidays in a year
+## feriados no ano
 
 holidays <- data.frame(DATES=c(as.Date('2023-10-12'),
                                as.Date('2023-11-02'),
@@ -141,7 +140,7 @@ holidays <- data.frame(DATES=c(as.Date('2023-10-12'),
                                as.Date('2023-12-25'),
                                as.Date('2023-12-31')))
 
-## calc working days month
+## dias uteis no mes
 
 first_day <- floor_date(Sys.Date(), unit = "month")
 
@@ -157,16 +156,17 @@ working_days <-
     DATES=seq(first_day, last_day, by = "day")) 
 
 
-## exclude holidays
+## excluir feriados
+
 working_days_no_holidays <-
   anti_join(working_days,holidays,by="DATES") %>% tally()  
 
-## exclude weekends
+## excluir final de semana
                             
 num_days = (working_days_no_holidays - num_weekends) 
 
 
-## calc days mtd
+## dias uteis ate ontem
 
 dyesterday <- Sys.Date()-1
 
@@ -175,27 +175,25 @@ data.frame(
 DATES=seq(first_day, dyesterday, by = "day")) 
 
 
-## exclude holidays
+## exclui feriados ate ontem
 days_mtd_no_holidays <-
 anti_join(days_mtd,holidays,by="DATES") %>% tally()
 
-## weekends
+## finais de semana ate ontem
 num_weekends_mtd <- sum(wday(seq(first_day, dyesterday, by = "day")) %in% c(1,7))
 
 days_until_yesterday <- days_mtd_no_holidays - num_weekends_mtd 
 
-## 
+## alcance esperado
 
 result_esperado_setores <-
 metas_setores %>% 
   mutate(ALCANCE_ESPERADO=(VALOR/as.numeric(num_days))) %>% 
    mutate(ALCANCE_ESPERADO2=(ALCANCE_ESPERADO*as.numeric(days_until_yesterday))) %>% 
-   mutate(VAR_ALCANCE_ESPERADO=(ALCANCE_ESPERADO2/VALOR)*100) 
+   mutate(ALCANCE_ESPERADO3=(ALCANCE_ESPERADO2/VALOR)*100) 
 
 View(result_esperado_setores)
-
-
-## alcance esperado 
+ 
 
 result_esperado_setores2 <- 
 left_join(alcance_result,
@@ -218,19 +216,17 @@ var_esperado_setores <-
               as.data.frame() %>% 
               select(SETOR,TIPO,ALCANCE_ESPERADO3),by=c("SETOR","TIPO")) %>%
   mutate(ALCANCE_ESPERADO=round(VALOR/ALCANCE_ESPERADO3-1,3)*100) %>% 
-  mutate(INDICADOR='ALCANCE ESPERADO') %>% 
-  mutate(VALOR=ALCANCE_ESPERADO3) %>% select(-ALCANCE_ESPERADO3,-ALCANCE_ESPERADO)
+  mutate(INDICADOR=' VAR ALCANCE ESPERADO') %>% 
+  mutate(VALOR=ALCANCE_ESPERADO) %>% select(-ALCANCE_ESPERADO3,-ALCANCE_ESPERADO)
 
 View(var_esperado_setores)
-
-
 
 
 ## BASE GERAL =========================================
 
 corder <- c("MES","SETOR","TIPO","INDICADOR","VALOR")
 
-base_result <-
+dt <-
 union_all(
 new_result2 %>% .[,corder],
 
@@ -238,9 +234,56 @@ metas_setores %>% .[,corder]) %>%
   
 union_all(. ,  
 
-alcance_result  %>% .[,corder])  
+alcance_result  %>% .[,corder])  %>% 
+  
+union_all(. ,  
+
+result_esperado_setores2 %>% .[,corder]) %>% 
+  
+union_all(. ,  
+          
+var_esperado_setores %>% .[,corder])  %>% as.data.frame()        
+
+View(dt)
 
 
-View(base_result)
+dt %>% write.csv(dt,file="dt.csv")
+
+## INSERT BANCO SUPERSET =========================================
+
+print(head(dt))
+
+# Se não houver dados, interromper a execução
+if (nrow(dt) == 0) {
+  cat("Nenhum dado para inserir.\n")
+} else {
+  # Verificar se a tabela existe no MariaDB
+  nome_tabela <- "result"
+  existe_tabela <- dbExistsTable(con_spset, nome_tabela)
+  # Se a tabela não existir, criar automaticamente no MariaDB
+  if(!existe_tabela) {
+    dbWriteTable(con_spset, nome_tabela, dt, create = TRUE, row.names = FALSE)
+    # Alterar a codificação da tabela para utf8mb4
+    query_alteracao <- paste("ALTER TABLE", nome_tabela, 
+                             "CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;")
+    dbExecute(con_spset, query_alteracao)
+  } else { # Se a tabela já existir, inserir os dados
+    print(dt)
+    #container
+    x <- data.frame(MES=NA,SETOR=NA,TIPO=NA,INDICADOR=NA,VALOR=NA)
+    for (i in 1:nrow(dt)) {
+      x[i,] <- dt[i,]
+      query <- paste("INSERT IGNORE INTO result (MES,SETOR,TIPO,INDICADOR,VALOR) VALUES ('",x[i,"MES"],"','",x[i,"SETOR"],"','",x[i,"TIPO"],"','",x[i,"INDICADOR"],"',",x[i,"VALOR"],");", dbopt = "")
+      dbSendQuery(con_spset,query)
+      
+    }
+  }
+}
+
+
+
+# Fechar conexões
+dbDisconnect(con_spset)
+dbDisconnect(con_sgo)
 
 
