@@ -21,6 +21,8 @@ new_result <- dbGetQuery(con2, statement = read_file('RESULT.sql'))
 
 View(new_result)
 
+write.csv2(new_result,file = "new_result.csv")
+
 ## EMISSAO
 
 result_setores_emissao <-
@@ -109,7 +111,7 @@ View(metas_setores)
 
 
 
-## ALCANCE ============================================
+## REACH  ============================================
 
 alcance_result <-
  left_join(new_result2,
@@ -129,9 +131,17 @@ View(alcance_result)
 
 
 
-## ESPERADO  ============================================
+## EXPECTED  ============================================
 
-## CALC DIAS UTEIS
+## holidays in a year
+
+holidays <- data.frame(DATES=c(as.Date('2023-10-12'),
+                               as.Date('2023-11-02'),
+                               as.Date('2023-11-15'),
+                               as.Date('2023-12-25'),
+                               as.Date('2023-12-31')))
+
+## calc working days month
 
 first_day <- floor_date(Sys.Date(), unit = "month")
 
@@ -141,27 +151,77 @@ num_days <- as.numeric(days_in_month(first_day))
 
 num_weekends <- sum(wday(seq(first_day, last_day, by = "day")) %in% c(1,7))
 
-holidays <- data.frame(DATA=c(as.Date('2023-10-12'),
-                              as.Date('2023-11-02'),
-                              as.Date('2023-11-15'),
-                              as.Date('2023-12-25'),
-                              as.Date('2023-12-31')
-                              )) %>% 
-                              mutate(MES=floor_date(DATA, unit = "month")) %>% 
-                              filter(MES==floor_date(Sys.Date(), unit = "month")) %>% 
-                              tally()
-                              
-                      
 
-num_days = (num_days - num_weekends) - holidays 
+working_days <- 
+  data.frame(
+    DATES=seq(first_day, last_day, by = "day")) 
 
-days_until_yesterday <- length(seq(first_day,Sys.Date(),by = "day"))-1
+
+## exclude holidays
+working_days_no_holidays <-
+  anti_join(working_days,holidays,by="DATES") %>% tally()  
+
+## exclude weekends
+                            
+num_days = (working_days_no_holidays - num_weekends) 
+
+
+## calc days mtd
+
+dyesterday <- Sys.Date()-1
+
+days_mtd <- 
+data.frame(
+DATES=seq(first_day, dyesterday, by = "day")) 
+
+
+## exclude holidays
+days_mtd_no_holidays <-
+anti_join(days_mtd,holidays,by="DATES") %>% tally()
+
+## weekends
+num_weekends_mtd <- sum(wday(seq(first_day, dyesterday, by = "day")) %in% c(1,7))
+
+days_until_yesterday <- days_mtd_no_holidays - num_weekends_mtd 
 
 ## 
 
-
+result_esperado_setores <-
 metas_setores %>% 
-  mutate(ALCANCE_ESPERADO=(VALOR/as.numeric(num_days))*length(seq(first_day,Sys.Date(),by = "day"))-1) %>% View()
+  mutate(ALCANCE_ESPERADO=(VALOR/as.numeric(num_days))) %>% 
+   mutate(ALCANCE_ESPERADO2=(ALCANCE_ESPERADO*as.numeric(days_until_yesterday))) %>% 
+   mutate(VAR_ALCANCE_ESPERADO=(ALCANCE_ESPERADO2/VALOR)*100) 
+
+View(result_esperado_setores)
+
+
+## alcance esperado 
+
+result_esperado_setores2 <- 
+left_join(alcance_result,
+result_esperado_setores %>% 
+  as.data.frame() %>% 
+  select(SETOR,TIPO,ALCANCE_ESPERADO3),by=c("SETOR","TIPO")) %>%
+  mutate(ALCANCE_ESPERADO=round(VALOR/ALCANCE_ESPERADO3-1,3)*100) %>% 
+   mutate(INDICADOR='ALCANCE ESPERADO') %>% 
+    mutate(VALOR=ALCANCE_ESPERADO3) %>% select(-ALCANCE_ESPERADO3,-ALCANCE_ESPERADO)
+
+View(result_esperado_setores2)
+
+
+## var alcance esperado 
+
+
+var_esperado_setores <- 
+  left_join(alcance_result,
+            result_esperado_setores %>% 
+              as.data.frame() %>% 
+              select(SETOR,TIPO,ALCANCE_ESPERADO3),by=c("SETOR","TIPO")) %>%
+  mutate(ALCANCE_ESPERADO=round(VALOR/ALCANCE_ESPERADO3-1,3)*100) %>% 
+  mutate(INDICADOR='ALCANCE ESPERADO') %>% 
+  mutate(VALOR=ALCANCE_ESPERADO3) %>% select(-ALCANCE_ESPERADO3,-ALCANCE_ESPERADO)
+
+View(var_esperado_setores)
 
 
 
