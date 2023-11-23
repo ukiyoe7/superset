@@ -26,18 +26,18 @@ write.csv2(new_result,file = "new_result.csv")
 
 result_setores_emissao <-
   new_result %>%  
-  mutate(TIPO=str_trim(TIPO)) %>% 
-  filter(TIPO=="EMISSAO") %>% 
-  group_by(MES=floor_date(DATA,"month"),SETOR,TIPO) %>% 
-  summarize(VALOR=sum(VRVENDA)) 
+   mutate(TIPO=str_trim(TIPO)) %>% 
+    filter(TIPO=="EMISSAO") %>% 
+     group_by(MES=floor_date(DATA,"month"),SETOR,TIPO) %>% 
+      summarize(VALOR=sum(VRVENDA)) 
 
 
 result_geral_emissao <-
   new_result %>%  
-  mutate(TIPO=str_trim(TIPO)) %>% 
-  filter(TIPO=="EMISSAO") %>% 
-  group_by(MES=floor_date(DATA,"month"),SETOR='GERAL',TIPO) %>% 
-  summarize(VALOR=sum(VRVENDA)) 
+   mutate(TIPO=str_trim(TIPO)) %>% 
+    filter(TIPO=="EMISSAO") %>% 
+     group_by(MES=floor_date(DATA,"month"),SETOR='GERAL',TIPO) %>% 
+      summarize(VALOR=sum(VRVENDA)) 
 
 
 ## BAIXA
@@ -52,17 +52,17 @@ new_result %>%
 
 result_geral_baixa <-
   new_result %>%  
-  mutate(TIPO=str_trim(TIPO)) %>% 
-  filter(TIPO=="BAIXA") %>% 
-  group_by(MES=floor_date(DATA,"month"),SETOR='GERAL',TIPO) %>% 
-  summarize(VALOR=sum(VRVENDA)) 
+   mutate(TIPO=str_trim(TIPO)) %>% 
+    filter(TIPO=="BAIXA") %>% 
+     group_by(MES=floor_date(DATA,"month"),SETOR='GERAL',TIPO) %>% 
+      summarize(VALOR=sum(VRVENDA)) 
 
 
 new_result2 <-
-union_all(result_setores_emissao,result_geral_emissao) %>% 
+ union_all(result_setores_emissao,result_geral_emissao) %>% 
    union_all(.,result_setores_baixa) %>% 
      union_all(.,result_geral_baixa) %>% 
-      mutate(INDICADOR='RESULTADO MES')
+      mutate(INDICADOR='RESULTADO MES') %>% mutate(VALOR=round(VALOR,2))
 
 View(new_result2)
 
@@ -95,15 +95,15 @@ View(metas_setores_emissao)
 
 metas_setores_baixa <-
   METAS_2023 %>%  
-  filter(DATA==floor_date(Sys.Date(),"month")) %>% 
-  group_by(MES=floor_date(DATA,"month"),SETOR) %>% 
-  summarize(VALOR=sum(VALOR)) %>% as.data.frame() %>%
-  mutate(TIPO='BAIXA') %>% 
-  mutate(INDICADOR='META MES ATUAL') 
+   filter(DATA==floor_date(Sys.Date(),"month")) %>% 
+    group_by(MES=floor_date(DATA,"month"),SETOR) %>% 
+     summarize(VALOR=sum(VALOR)) %>% as.data.frame() %>%
+      mutate(TIPO='BAIXA') %>% 
+       mutate(INDICADOR='META MES ATUAL') 
 
 
 metas_setores <-
-   union_all(metas_setores_emissao,metas_setores_baixa)
+   union_all(metas_setores_emissao,metas_setores_baixa) %>% mutate(VALOR=round(VALOR,2))
 
 
 View(metas_setores)
@@ -122,7 +122,7 @@ alcance_result <-
                  mutate(ALCANCE=round(((VALOR/METAS)*100),2)) %>% 
                   select(-VALOR,-METAS) %>% 
                    mutate(INDICADOR='ALCANCE') %>% 
-                    rename(VALOR=ALCANCE)
+                    rename(VALOR=ALCANCE) %>% mutate(VALOR=round(VALOR,2))
 
 
 View(alcance_result)
@@ -177,7 +177,7 @@ DATES=seq(first_day, dyesterday, by = "day"))
 
 ## exclui feriados ate ontem
 days_mtd_no_holidays <-
-anti_join(days_mtd,holidays,by="DATES") %>% tally()
+ anti_join(days_mtd,holidays,by="DATES") %>% tally()
 
 ## finais de semana ate ontem
 num_weekends_mtd <- sum(wday(seq(first_day, dyesterday, by = "day")) %in% c(1,7))
@@ -187,22 +187,24 @@ days_until_yesterday <- days_mtd_no_holidays - num_weekends_mtd
 ## alcance esperado
 
 result_esperado_setores <-
-metas_setores %>% 
+ metas_setores %>% 
   mutate(ALCANCE_ESPERADO=(VALOR/as.numeric(num_days))) %>% 
    mutate(ALCANCE_ESPERADO2=(ALCANCE_ESPERADO*as.numeric(days_until_yesterday))) %>% 
-   mutate(ALCANCE_ESPERADO3=(ALCANCE_ESPERADO2/VALOR)*100) 
+    mutate(ALCANCE_ESPERADO3=(ALCANCE_ESPERADO2/VALOR)*100) 
 
 View(result_esperado_setores)
  
 
 result_esperado_setores2 <- 
-left_join(alcance_result,
-result_esperado_setores %>% 
-  as.data.frame() %>% 
-  select(SETOR,TIPO,ALCANCE_ESPERADO3),by=c("SETOR","TIPO")) %>%
-  mutate(ALCANCE_ESPERADO=round(VALOR/ALCANCE_ESPERADO3-1,3)*100) %>% 
-   mutate(INDICADOR='ALCANCE ESPERADO') %>% 
-    mutate(VALOR=ALCANCE_ESPERADO3) %>% select(-ALCANCE_ESPERADO3,-ALCANCE_ESPERADO)
+ left_join(alcance_result,
+  result_esperado_setores %>% 
+   as.data.frame() %>% 
+    select(SETOR,TIPO,ALCANCE_ESPERADO3),by=c("SETOR","TIPO")) %>%
+     mutate(ALCANCE_ESPERADO=round(VALOR/ALCANCE_ESPERADO3-1,3)*100) %>% 
+      mutate(INDICADOR='ALCANCE ESPERADO') %>% 
+       mutate(VALOR=ALCANCE_ESPERADO3) %>% 
+        select(-ALCANCE_ESPERADO3,-ALCANCE_ESPERADO) %>% 
+         mutate(VALOR=round(VALOR,2))
 
 View(result_esperado_setores2)
 
@@ -212,12 +214,14 @@ View(result_esperado_setores2)
 
 var_esperado_setores <- 
   left_join(alcance_result,
-            result_esperado_setores %>% 
-              as.data.frame() %>% 
-              select(SETOR,TIPO,ALCANCE_ESPERADO3),by=c("SETOR","TIPO")) %>%
-  mutate(ALCANCE_ESPERADO=round(VALOR/ALCANCE_ESPERADO3-1,3)*100) %>% 
-  mutate(INDICADOR=' VAR ALCANCE ESPERADO') %>% 
-  mutate(VALOR=ALCANCE_ESPERADO) %>% select(-ALCANCE_ESPERADO3,-ALCANCE_ESPERADO)
+    result_esperado_setores %>% 
+     as.data.frame() %>% 
+      select(SETOR,TIPO,ALCANCE_ESPERADO3),by=c("SETOR","TIPO")) %>%
+       mutate(ALCANCE_ESPERADO=round(VALOR/ALCANCE_ESPERADO3-1,3)*100) %>% 
+        mutate(INDICADOR=' VAR ALCANCE ESPERADO') %>% 
+         mutate(VALOR=ALCANCE_ESPERADO) %>% 
+          select(-ALCANCE_ESPERADO3,-ALCANCE_ESPERADO) %>% 
+           mutate(VALOR=round(VALOR,2))
 
 View(var_esperado_setores)
 
@@ -246,6 +250,12 @@ var_esperado_setores %>% .[,corder])  %>% as.data.frame()
 
 View(dt)
 
+ dt <- dt %>% select(-MES)
+dt %>% glimpse(
+)
+
+dt <- dt %>% mutate(MES=as.Date(MES))
+
 
 dt %>% write.csv(dt,file="dt.csv")
 
@@ -273,12 +283,13 @@ if (nrow(dt) == 0) {
     x <- data.frame(MES=NA,SETOR=NA,TIPO=NA,INDICADOR=NA,VALOR=NA)
     for (i in 1:nrow(dt)) {
       x[i,] <- dt[i,]
-      query <- paste("INSERT IGNORE INTO result (MES,SETOR,TIPO,INDICADOR,VALOR) VALUES ('",x[i,"MES"],"','",x[i,"SETOR"],"','",x[i,"TIPO"],"','",x[i,"INDICADOR"],"',",x[i,"VALOR"],");", dbopt = "")
+      query <- paste("INSERT IGNORE INTO result (MES,SETOR,TIPO,INDICADOR,VALOR) VALUES ('",x[i,"MES"],"','",x[i,"SETOR"],"','",x[i,"TIPO"],"','",x[i,"INDICADOR"],"',",x[i,"VALOR"],");", dbcomercial = "")
       dbSendQuery(con_spset,query)
-      
+        
     }
   }
 }
+
 
 
 
@@ -287,3 +298,13 @@ dbDisconnect(con_spset)
 dbDisconnect(con_sgo)
 
 
+x <- data.frame(MES=NA,SETOR=NA,TIPO=NA,INDICADOR=NA,VALOR=NA)
+for (i in 1:nrow(dt)) {
+  x[i,] <- dt[i,]
+  query <- paste("UPDATE result SET MES='",x[i,"MES"],"',SETOR='",x[i,"SETOR"],"',TIPO='",x[i,"TIPO"],"',INDICADOR='",x[i,"INDICADOR"],"',VALOR=",x[i,"VALOR"],";", dbcomercial = "")
+  dbSendQuery(con_spset,query)
+  
+} 
+
+
+print(query)
