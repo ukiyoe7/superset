@@ -103,11 +103,11 @@ metas_setores_baixa <-
 
 
 metas_setores <-
-   union_all(metas_setores_emissao,metas_setores_baixa) %>% mutate(VALOR=round(VALOR,2))
+   union_all(metas_setores_emissao,metas_setores_baixa) %>% 
+    mutate(VALOR=round(VALOR,2))
 
 
 View(metas_setores)
-
 
 
 ## ALCANCE  ============================================
@@ -250,14 +250,18 @@ var_esperado_setores %>% .[,corder])  %>% as.data.frame()
 
 View(dt)
 
+dt %>% glimpse()
+
  dt <- dt %>% select(-MES)
 dt %>% glimpse(
 )
 
-dt <- dt %>% mutate(MES=as.Date(MES))
+dt <- dt %>% mutate(MES=as.character(MES))
+
+dt <- dt %>% mutate(ID=seq(1:nrow(dt)))
 
 
-dt %>% write.csv(dt,file="dt.csv")
+dt <- as.data.frame(dt) %>%  write.csv2(dt,file="dt.csv")
 
 ## INSERT BANCO SUPERSET =========================================
 
@@ -280,12 +284,12 @@ if (nrow(dt) == 0) {
   } else { # Se a tabela já existir, inserir os dados
     print(dt)
     #container
-    x <- data.frame(MES=NA,SETOR=NA,TIPO=NA,INDICADOR=NA,VALOR=NA)
+    y <- data.frame(MES=NA,SETOR=NA,TIPO=NA,INDICADOR=NA,VALOR=NA,ID=NA)
     for (i in 1:nrow(dt)) {
-      x[i,] <- dt[i,]
-      query <- paste("INSERT IGNORE INTO result (MES,SETOR,TIPO,INDICADOR,VALOR) VALUES ('",x[i,"MES"],"','",x[i,"SETOR"],"','",x[i,"TIPO"],"','",x[i,"INDICADOR"],"',",x[i,"VALOR"],");", dbcomercial = "")
+      y[i,] <- dt[i,]
+      query <- paste("INSERT IGNORE INTO result (MES,SETOR,TIPO,INDICADOR,VALOR,ID) VALUES ('",y[i,"MES"],"','",y[i,"SETOR"],"','",y[i,"TIPO"],"','",y[i,"INDICADOR"],"',",y[i,"VALOR"],",",y[i,"ID"],") ON DUPLICATE KEY UPDATE ID=",y[i,"ID"],",MES='",y[i,"MES"],"',SETOR='",y[i,"SETOR"],"',TIPO='",y[i,"TIPO"],"',INDICADOR='",y[i,"INDICADOR"],"',VALOR=",y[i,"VALOR"],";", dbcomercial = "")
+     
       dbSendQuery(con_spset,query)
-        
     }
   }
 }
@@ -297,14 +301,3 @@ if (nrow(dt) == 0) {
 dbDisconnect(con_spset)
 dbDisconnect(con_sgo)
 
-
-x <- data.frame(MES=NA,SETOR=NA,TIPO=NA,INDICADOR=NA,VALOR=NA)
-for (i in 1:nrow(dt)) {
-  x[i,] <- dt[i,]
-  query <- paste("UPDATE result SET MES='",x[i,"MES"],"',SETOR='",x[i,"SETOR"],"',TIPO='",x[i,"TIPO"],"',INDICADOR='",x[i,"INDICADOR"],"',VALOR=",x[i,"VALOR"],";", dbcomercial = "")
-  dbSendQuery(con_spset,query)
-  
-} 
-
-
-print(query)
