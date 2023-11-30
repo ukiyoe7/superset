@@ -5,7 +5,7 @@
 ## libraries & connections =============================================
 
 library(DBI)
-library(dplyr)
+library(tidyverse)
 library(readr)
 library(lubridate)
 library(stringr)
@@ -16,11 +16,8 @@ con_spset <- dbConnect(odbc::odbc(), "dbcomercial", encoding = "UTF-8")
 
 ## RESULT ===============================================
 
-new_result <- dbGetQuery(con_sgo, statement = read_file('RESULT.sql')) 
+new_result <- dbGetQuery(con_sgo, statement = read_file("C:\\Users\\REPRO SANDRO\\Documents\\R\\SUPERSET\\RESULT.sql")) 
 
-View(new_result)
-
-write.csv2(new_result,file = "new_result.csv")
 
 ## EMISSAO
 
@@ -64,18 +61,11 @@ new_result2 <-
      union_all(.,result_geral_baixa) %>% 
       mutate(INDICADOR='RESULTADO MES') %>% mutate(VALOR=round(VALOR,2))
 
-View(new_result2)
-
 
 ## METAS ==================================================
 
 METAS_2023 <-
 get(load("C:\\Users\\REPRO SANDRO\\Documents\\R\\RESULT\\BASES\\METAS_2023.RData"))
-
-View(METAS_2023)
-
-
-METAS_2023 %>% filter(SETOR=="GERAL") %>% summarize(V=sum(VALOR))
 
 
 save(METAS_2023,file = "C:\\Users\\REPRO SANDRO\\Documents\\R\\RESULT\\BASES\\METAS_2023.RData")
@@ -88,9 +78,6 @@ metas_setores_emissao <-
      summarize(VALOR=sum(VALOR)) %>% as.data.frame() %>%
       mutate(TIPO='EMISSAO') %>% 
        mutate(INDICADOR='META MES ATUAL') 
-
-
-View(metas_setores_emissao)
 
 
 metas_setores_baixa <-
@@ -107,9 +94,6 @@ metas_setores <-
     mutate(VALOR=round(VALOR,2))
 
 
-View(metas_setores)
-
-
 ## ALCANCE  ============================================
 
 alcance_result <-
@@ -123,11 +107,6 @@ alcance_result <-
                   select(-VALOR,-METAS) %>% 
                    mutate(INDICADOR='ALCANCE') %>% 
                     rename(VALOR=ALCANCE) %>% mutate(VALOR=round(VALOR,2))
-
-
-View(alcance_result)
-
-
 
 
 ## ESPERADO  ============================================
@@ -192,8 +171,6 @@ result_esperado_setores <-
    mutate(ALCANCE_ESPERADO2=(ALCANCE_ESPERADO*as.numeric(days_until_yesterday))) %>% 
     mutate(ALCANCE_ESPERADO3=(ALCANCE_ESPERADO2/VALOR)*100) 
 
-View(result_esperado_setores)
- 
 
 result_esperado_setores2 <- 
  left_join(alcance_result,
@@ -205,8 +182,6 @@ result_esperado_setores2 <-
        mutate(VALOR=ALCANCE_ESPERADO3) %>% 
         select(-ALCANCE_ESPERADO3,-ALCANCE_ESPERADO) %>% 
          mutate(VALOR=round(VALOR,2))
-
-View(result_esperado_setores2)
 
 
 ## var alcance esperado 
@@ -222,8 +197,6 @@ var_esperado_setores <-
          mutate(VALOR=ALCANCE_ESPERADO) %>% 
           select(-ALCANCE_ESPERADO3,-ALCANCE_ESPERADO) %>% 
            mutate(VALOR=round(VALOR,2))
-
-View(var_esperado_setores)
 
 
 ## BASE GERAL =========================================
@@ -246,26 +219,17 @@ result_esperado_setores2 %>% .[,corder]) %>%
   
 union_all(. ,  
           
-var_esperado_setores %>% .[,corder])  %>% as.data.frame()        
-
-View(dt)
-
-dt %>% glimpse()
-
- dt <- dt %>% select(-MES)
-dt %>% glimpse(
-)
-
-dt <- dt %>% mutate(MES=as.character(MES))
-
-dt <- dt %>% mutate(ID=seq(1:nrow(dt)))
+var_esperado_setores %>% .[,corder])  %>% 
+  
+  as.data.frame() %>% 
+   
+  mutate(MES=as.character(MES)) %>% 
+   
+   mutate(ID=seq(1:nrow(dt)))
 
 
-dt <- as.data.frame(dt) %>%  write.csv2(dt,file="dt.csv")
 
 ## INSERT BANCO SUPERSET =========================================
-
-print(head(dt))
 
 # Se não houver dados, interromper a execução
 if (nrow(dt) == 0) {
@@ -287,7 +251,7 @@ if (nrow(dt) == 0) {
     y <- data.frame(MES=NA,SETOR=NA,TIPO=NA,INDICADOR=NA,VALOR=NA,ID=NA)
     for (i in 1:nrow(dt)) {
       y[i,] <- dt[i,]
-      query <- paste("INSERT IGNORE INTO result (MES,SETOR,TIPO,INDICADOR,VALOR,ID) VALUES ('",y[i,"MES"],"','",y[i,"SETOR"],"','",y[i,"TIPO"],"','",y[i,"INDICADOR"],"',",y[i,"VALOR"],",",y[i,"ID"],") ON DUPLICATE KEY UPDATE ID=",y[i,"ID"],",MES='",y[i,"MES"],"',SETOR='",y[i,"SETOR"],"',TIPO='",y[i,"TIPO"],"',INDICADOR='",y[i,"INDICADOR"],"',VALOR=",y[i,"VALOR"],";", dbcomercial = "")
+      query <- paste("INSERT IGNORE INTO ",nome_tabela," (MES,SETOR,TIPO,INDICADOR,VALOR,ID) VALUES ('",y[i,"MES"],"','",y[i,"SETOR"],"','",y[i,"TIPO"],"','",y[i,"INDICADOR"],"',",y[i,"VALOR"],",",y[i,"ID"],") ON DUPLICATE KEY UPDATE ID=",y[i,"ID"],",MES='",y[i,"MES"],"',SETOR='",y[i,"SETOR"],"',TIPO='",y[i,"TIPO"],"',INDICADOR='",y[i,"INDICADOR"],"',VALOR=",y[i,"VALOR"],";", dbcomercial = "")
      
       dbSendQuery(con_spset,query)
     }
