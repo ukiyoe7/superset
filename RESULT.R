@@ -65,48 +65,49 @@ new_result2 <-
 ## METAS ==================================================
 
 METAS_2023 <-
-get(load("C:\\Users\\REPRO SANDRO\\Documents\\R\\RESULT\\BASES\\METAS_2023.RData"))
+  get(load("C:\\Users\\REPRO SANDRO\\Documents\\R\\RESULT\\BASES\\METAS_2023.RData"))
 
 
 save(METAS_2023,file = "C:\\Users\\REPRO SANDRO\\Documents\\R\\RESULT\\BASES\\METAS_2023.RData")
 
+
 ## EMISSAO
 metas_setores_emissao <-
   METAS_2023 %>%  
-   filter(DATA==floor_date(Sys.Date(),"month")) %>% 
-    group_by(MES=floor_date(DATA,"month"),SETOR) %>% 
-     summarize(VALOR=sum(VALOR)) %>% as.data.frame() %>%
-      mutate(TIPO='EMISSAO') %>% 
-       mutate(INDICADOR='META MES ATUAL') 
+  filter(DATA==floor_date(Sys.Date(),"month")) %>% 
+  group_by(MES=floor_date(DATA,"month"),SETOR) %>% 
+  summarize(VALOR=sum(VALOR)) %>% as.data.frame() %>%
+  mutate(TIPO='EMISSAO') %>% 
+  mutate(INDICADOR='META MES ATUAL') 
 
 
 metas_setores_baixa <-
   METAS_2023 %>%  
-   filter(DATA==floor_date(Sys.Date(),"month")) %>% 
-    group_by(MES=floor_date(DATA,"month"),SETOR) %>% 
-     summarize(VALOR=sum(VALOR)) %>% as.data.frame() %>%
-      mutate(TIPO='BAIXA') %>% 
-       mutate(INDICADOR='META MES ATUAL') 
+  filter(DATA==floor_date(Sys.Date(),"month")) %>% 
+  group_by(MES=floor_date(DATA,"month"),SETOR) %>% 
+  summarize(VALOR=sum(VALOR)) %>% as.data.frame() %>%
+  mutate(TIPO='BAIXA') %>% 
+  mutate(INDICADOR='META MES ATUAL') 
 
 
 metas_setores <-
-   union_all(metas_setores_emissao,metas_setores_baixa) %>% 
-    mutate(VALOR=round(VALOR,2))
+  union_all(metas_setores_emissao,metas_setores_baixa) %>% 
+  mutate(VALOR=round(VALOR,2))
 
 
 ## ALCANCE  ============================================
 
 alcance_result <-
- left_join(new_result2,
+  left_join(new_result2,
             METAS_2023 %>%  
-             filter(DATA==floor_date(Sys.Date(),"month")) %>% 
+              filter(DATA==floor_date(Sys.Date(),"month")) %>% 
               group_by(MES=floor_date(DATA,"month"),SETOR) %>% 
-               summarize(METAS=sum(VALOR)) %>% 
-                as.data.frame() %>% select(-MES),by="SETOR") %>% 
-                 mutate(ALCANCE=round(((VALOR/METAS)*100),2)) %>% 
-                  select(-VALOR,-METAS) %>% 
-                   mutate(INDICADOR='ALCANCE') %>% 
-                    rename(VALOR=ALCANCE) %>% mutate(VALOR=round(VALOR,2))
+              summarize(METAS=sum(VALOR)) %>% 
+              as.data.frame() %>% select(-MES),by="SETOR") %>% 
+  mutate(ALCANCE=round(((VALOR/METAS)*100),2)) %>% 
+  select(-VALOR,-METAS) %>% 
+  mutate(INDICADOR='ALCANCE') %>% 
+  rename(VALOR=ALCANCE) %>% mutate(VALOR=round(VALOR,2))
 
 
 ## ESPERADO  ============================================
@@ -141,7 +142,7 @@ working_days_no_holidays <-
   anti_join(working_days,holidays,by="DATES") %>% tally()  
 
 ## excluir final de semana
-                            
+
 num_days = (working_days_no_holidays - num_weekends) 
 
 
@@ -150,13 +151,13 @@ num_days = (working_days_no_holidays - num_weekends)
 dyesterday <- Sys.Date()-1
 
 days_mtd <- 
-data.frame(
-DATES=seq(first_day, dyesterday, by = "day")) 
+  data.frame(
+    DATES=seq(first_day, dyesterday, by = "day")) 
 
 
 ## exclui feriados ate ontem
 days_mtd_no_holidays <-
- anti_join(days_mtd,holidays,by="DATES") %>% tally()
+  anti_join(days_mtd,holidays,by="DATES") %>% tally()
 
 ## finais de semana ate ontem
 num_weekends_mtd <- sum(wday(seq(first_day, dyesterday, by = "day")) %in% c(1,7))
@@ -166,22 +167,22 @@ days_until_yesterday <- days_mtd_no_holidays - num_weekends_mtd
 ## alcance esperado
 
 result_esperado_setores <-
- metas_setores %>% 
+  metas_setores %>% 
   mutate(ALCANCE_ESPERADO=(VALOR/as.numeric(num_days))) %>% 
-   mutate(ALCANCE_ESPERADO2=(ALCANCE_ESPERADO*as.numeric(days_until_yesterday))) %>% 
-    mutate(ALCANCE_ESPERADO3=(ALCANCE_ESPERADO2/VALOR)*100) 
+  mutate(ALCANCE_ESPERADO2=(ALCANCE_ESPERADO*as.numeric(days_until_yesterday))) %>% 
+  mutate(ALCANCE_ESPERADO3=(ALCANCE_ESPERADO2/VALOR)*100) 
 
 
 result_esperado_setores2 <- 
- left_join(alcance_result,
-  result_esperado_setores %>% 
-   as.data.frame() %>% 
-    select(SETOR,TIPO,ALCANCE_ESPERADO3),by=c("SETOR","TIPO")) %>%
-     mutate(ALCANCE_ESPERADO=round(VALOR/ALCANCE_ESPERADO3-1,3)*100) %>% 
-      mutate(INDICADOR='ALCANCE ESPERADO') %>% 
-       mutate(VALOR=ALCANCE_ESPERADO3) %>% 
-        select(-ALCANCE_ESPERADO3,-ALCANCE_ESPERADO) %>% 
-         mutate(VALOR=round(VALOR,2))
+  left_join(alcance_result,
+            result_esperado_setores %>% 
+              as.data.frame() %>% 
+              select(SETOR,TIPO,ALCANCE_ESPERADO3),by=c("SETOR","TIPO")) %>%
+  mutate(ALCANCE_ESPERADO=round(VALOR/ALCANCE_ESPERADO3-1,3)*100) %>% 
+  mutate(INDICADOR='ALCANCE ESPERADO') %>% 
+  mutate(VALOR=ALCANCE_ESPERADO3) %>% 
+  select(-ALCANCE_ESPERADO3,-ALCANCE_ESPERADO) %>% 
+  mutate(VALOR=round(VALOR,2))
 
 
 ## var alcance esperado 
@@ -189,44 +190,43 @@ result_esperado_setores2 <-
 
 var_esperado_setores <- 
   left_join(alcance_result,
-    result_esperado_setores %>% 
-     as.data.frame() %>% 
-      select(SETOR,TIPO,ALCANCE_ESPERADO3),by=c("SETOR","TIPO")) %>%
-       mutate(ALCANCE_ESPERADO=round(VALOR/ALCANCE_ESPERADO3-1,3)*100) %>% 
-        mutate(INDICADOR=' VAR ALCANCE ESPERADO') %>% 
-         mutate(VALOR=ALCANCE_ESPERADO) %>% 
-          select(-ALCANCE_ESPERADO3,-ALCANCE_ESPERADO) %>% 
-           mutate(VALOR=round(VALOR,2))
-
+            result_esperado_setores %>% 
+              as.data.frame() %>% 
+              select(SETOR,TIPO,ALCANCE_ESPERADO3),by=c("SETOR","TIPO")) %>%
+  mutate(ALCANCE_ESPERADO=round(VALOR/ALCANCE_ESPERADO3-1,3)*100) %>% 
+  mutate(INDICADOR=' VAR ALCANCE ESPERADO') %>% 
+  mutate(VALOR=ALCANCE_ESPERADO) %>% 
+  select(-ALCANCE_ESPERADO3,-ALCANCE_ESPERADO) %>% 
+  mutate(VALOR=round(VALOR,2))
 
 ## BASE GERAL =========================================
 
 corder <- c("MES","SETOR","TIPO","INDICADOR","VALOR")
 
 dt <-
-union_all(
-new_result2 %>% .[,corder],
-
-metas_setores %>% .[,corder]) %>% 
+  union_all(
+    new_result2 %>% .[,corder],
+    
+    metas_setores %>% .[,corder]) %>% 
   
-union_all(. ,  
-
-alcance_result  %>% .[,corder])  %>% 
+  union_all(. ,  
+            
+            alcance_result  %>% .[,corder])  %>% 
   
-union_all(. ,  
-
-result_esperado_setores2 %>% .[,corder]) %>% 
+  union_all(. ,  
+            
+            result_esperado_setores2 %>% .[,corder]) %>% 
   
-union_all(. ,  
-          
-var_esperado_setores %>% .[,corder])  %>% 
+  union_all(. ,  
+            
+            var_esperado_setores %>% .[,corder])  %>% 
   
-  as.data.frame() %>% 
-   
-  mutate(MES=as.character(MES)) %>% 
-   
-   mutate(ID=seq(1:nrow(dt)))
+  as.data.frame()
 
+
+dt <- dt %>% mutate(MES=as.character(MES))
+
+dt <- dt %>% mutate(ID=seq(1:nrow(dt)))
 
 
 ## INSERT BANCO SUPERSET =========================================
@@ -252,7 +252,7 @@ if (nrow(dt) == 0) {
     for (i in 1:nrow(dt)) {
       y[i,] <- dt[i,]
       query <- paste("INSERT IGNORE INTO ",nome_tabela," (MES,SETOR,TIPO,INDICADOR,VALOR,ID) VALUES ('",y[i,"MES"],"','",y[i,"SETOR"],"','",y[i,"TIPO"],"','",y[i,"INDICADOR"],"',",y[i,"VALOR"],",",y[i,"ID"],") ON DUPLICATE KEY UPDATE ID=",y[i,"ID"],",MES='",y[i,"MES"],"',SETOR='",y[i,"SETOR"],"',TIPO='",y[i,"TIPO"],"',INDICADOR='",y[i,"INDICADOR"],"',VALOR=",y[i,"VALOR"],";", dbcomercial = "")
-     
+      
       dbSendQuery(con_spset,query)
     }
   }
@@ -264,4 +264,7 @@ if (nrow(dt) == 0) {
 # Fechar conexões
 dbDisconnect(con_spset)
 dbDisconnect(con_sgo)
+
+
+
 
