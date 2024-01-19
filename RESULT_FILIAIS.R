@@ -27,10 +27,10 @@ View(result_filiais)
 ## METAS ==================================================
 
 METAS_FILIAIS_2023 <-
-  get(load("C:\\Users\\REPRO SANDRO\\Documents\\R\\RESULT\\BASES\\METAS_2023.RData"))
+  get(load("C:\\Users\\REPRO SANDRO\\Documents\\R\\RESULT\\BASES\\METAS_FILIAIS_2023.RData"))
 
 
-save(METAS_FILIAIS_2023,file = "C:\\Users\\REPRO SANDRO\\Documents\\R\\RESULT\\BASES\\METAS_2023.RData")
+save(METAS_FILIAIS_2023,file = "C:\\Users\\REPRO SANDRO\\Documents\\R\\RESULT\\BASES\\METAS_FILIAIS_2023.RData")
 
 
 ## RESULT =======================================================
@@ -47,7 +47,7 @@ View(result_filiais2)
 
 metas_filiais_2023_2 <-
   METAS_FILIAIS_2023 %>% 
-  filter(DATA==floor_date(Sys.Date(),"month")) %>% 
+  filter(DATA==floor_date(Sys.Date(),"month")-years(1)) %>% 
   group_by(MES=floor_date(DATA,"month"),EMPCODIGO) %>% 
   summarize(VALOR=sum(VALOR)) %>% as.data.frame() %>%
   mutate(INDICADOR='META MES ATUAL') 
@@ -61,8 +61,8 @@ alcance_result_filiais <-
   left_join(result_filiais_2,
             METAS_FILIAIS_2023 %>% 
              rename(METAS=VALOR) %>% 
-              filter(DATA==floor_date(Sys.Date(),"month")) %>% 
-               select(-EMPRESA,-MES),by="EMPCODIGO") %>% 
+              filter(DATA==floor_date(Sys.Date(),"month")-years(1)) %>% 
+               select(-EMPRESA,-DATA),by="EMPCODIGO") %>% 
   mutate(ALCANCE=round(((VALOR/METAS)),3)) %>% 
   select(-VALOR,-METAS) %>% 
   mutate(INDICADOR='ALCANCE') %>% 
@@ -73,10 +73,16 @@ alcance_result_filiais <-
 
 ## feriados no ano
 
-holidays <- data.frame(DATES=c(as.Date('2023-10-12'),
-                               as.Date('2023-11-02'),
-                               as.Date('2023-11-15'),
-                               as.Date('2023-12-25')
+holidays <- data.frame(DATES=c(as.Date('2024-01-01'),
+                               as.Date('2024-02-12'),
+                               as.Date('2024-02-13'),
+                               as.Date('2024-03-29'),
+                               as.Date('2024-04-21'),
+                               as.Date('2024-05-01'),
+                               as.Date('2024-05-30'),
+                               as.Date('2024-11-15'),
+                               as.Date('2024-12-25')
+                               
 ))
 
 ## dias uteis no mes
@@ -129,7 +135,7 @@ days_until_yesterday <- days_mtd_no_holidays - num_weekends_mtd
 
 result_esperado_filiais <-
   metas_filiais_2023 %>% 
-   filter(DATA==floor_date(Sys.Date(),"month")) %>% 
+   filter(DATA==floor_date(Sys.Date(),"month")-years(1)) %>% 
     mutate(ALCANCE_ESPERADO=(VALOR/as.numeric(num_days2))) %>% 
      mutate(ALCANCE_ESPERADO2=(ALCANCE_ESPERADO*as.numeric(days_until_yesterday))) %>% 
       mutate(ALCANCE_ESPERADO3=(ALCANCE_ESPERADO2/VALOR)) %>% 
@@ -144,7 +150,11 @@ View(result_esperado_filiais)
 ## VAR ESPERADO  ============================================
 
 
-
+left_join(alcance_result_filiais %>% 
+            select(-INDICADOR),result_esperado_filiais %>% 
+            select(-INDICADOR,-MES),by="EMPCODIGO") %>% 
+              as.data.frame() %>% 
+              mutate(VAR=round(VALOR.x/VALOR.y-1,3)) %>% View()
 
 
 

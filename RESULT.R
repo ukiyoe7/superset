@@ -67,7 +67,7 @@ new_result2 <-
 ## METAS ==================================================
 
 METAS_2024 <-
-  get(load("C:\\Users\\REPRO SANDRO\\Documents\\R\\RESULT\\BASES\\METAS_2024.RData"))
+  get(load("C:\\Users\\REPRO SANDRO\\Documents\\R\\SUPERSET\\BASES\\METAS_2024.RData"))
 
 
 ## EMISSAO
