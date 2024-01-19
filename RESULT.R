@@ -28,6 +28,8 @@ result_setores_emissao <-
      group_by(MES=floor_date(DATA,"month"),SETOR,TIPO) %>% 
       summarize(VALOR=sum(VRVENDA)) 
 
+write.csv2(result_setores_emissao,file = "result_setores_emissao.csv")
+
 
 result_geral_emissao <-
   new_result %>%  
@@ -64,16 +66,13 @@ new_result2 <-
 
 ## METAS ==================================================
 
-METAS_2023 <-
-  get(load("C:\\Users\\REPRO SANDRO\\Documents\\R\\RESULT\\BASES\\METAS_2023.RData"))
-
-
-save(METAS_2023,file = "C:\\Users\\REPRO SANDRO\\Documents\\R\\RESULT\\BASES\\METAS_2023.RData")
+METAS_2024 <-
+  get(load("C:\\Users\\REPRO SANDRO\\Documents\\R\\RESULT\\BASES\\METAS_2024.RData"))
 
 
 ## EMISSAO
 metas_setores_emissao <-
-  METAS_2023 %>%  
+  METAS_2024 %>%  
   filter(DATA==floor_date(Sys.Date(),"month")) %>% 
   group_by(MES=floor_date(DATA,"month"),SETOR) %>% 
   summarize(VALOR=sum(VALOR)) %>% as.data.frame() %>%
@@ -82,7 +81,7 @@ metas_setores_emissao <-
 
 
 metas_setores_baixa <-
-  METAS_2023 %>%  
+  METAS_2024 %>%  
   filter(DATA==floor_date(Sys.Date(),"month")) %>% 
   group_by(MES=floor_date(DATA,"month"),SETOR) %>% 
   summarize(VALOR=sum(VALOR)) %>% as.data.frame() %>%
@@ -99,26 +98,31 @@ metas_setores <-
 
 alcance_result <-
   left_join(new_result2,
-            METAS_2023 %>%  
+            METAS_2024 %>%  
               filter(DATA==floor_date(Sys.Date(),"month")) %>% 
               group_by(MES=floor_date(DATA,"month"),SETOR) %>% 
               summarize(METAS=sum(VALOR)) %>% 
               as.data.frame() %>% select(-MES),by="SETOR") %>% 
-  mutate(ALCANCE=round(((VALOR/METAS)*100),2)) %>% 
+  mutate(ALCANCE=round(((VALOR/METAS)),3)) %>% 
   select(-VALOR,-METAS) %>% 
   mutate(INDICADOR='ALCANCE') %>% 
-  rename(VALOR=ALCANCE) %>% mutate(VALOR=round(VALOR,2))
+  rename(VALOR=ALCANCE) %>% mutate(VALOR=round(VALOR,3))
 
 
 ## ESPERADO  ============================================
 
 ## feriados no ano
 
-holidays <- data.frame(DATES=c(as.Date('2023-10-12'),
-                               as.Date('2023-11-02'),
-                               as.Date('2023-11-15'),
-                               as.Date('2023-12-25'),
-                               as.Date('2023-12-31')))
+holidays <- data.frame(DATES=c(as.Date('2024-01-01'),
+                               as.Date('2024-02-12'),
+                               as.Date('2024-02-13'),
+                               as.Date('2024-03-29'),
+                               as.Date('2024-04-21'),
+                               as.Date('2024-05-01'),
+                               as.Date('2024-05-30'),
+                               as.Date('2024-11-15'),
+                               as.Date('2024-12-25')
+                               ))
 
 ## dias uteis no mes
 
@@ -143,7 +147,7 @@ working_days_no_holidays <-
 
 ## excluir final de semana
 
-num_days = (working_days_no_holidays - num_weekends) 
+num_days2 <- (working_days_no_holidays - num_weekends) 
 
 
 ## dias uteis ate ontem
@@ -168,9 +172,9 @@ days_until_yesterday <- days_mtd_no_holidays - num_weekends_mtd
 
 result_esperado_setores <-
   metas_setores %>% 
-  mutate(ALCANCE_ESPERADO=(VALOR/as.numeric(num_days))) %>% 
+  mutate(ALCANCE_ESPERADO=(VALOR/as.numeric(num_days2))) %>% 
   mutate(ALCANCE_ESPERADO2=(ALCANCE_ESPERADO*as.numeric(days_until_yesterday))) %>% 
-  mutate(ALCANCE_ESPERADO3=(ALCANCE_ESPERADO2/VALOR)*100) 
+  mutate(ALCANCE_ESPERADO3=(ALCANCE_ESPERADO2/VALOR)) 
 
 
 result_esperado_setores2 <- 
@@ -178,11 +182,11 @@ result_esperado_setores2 <-
             result_esperado_setores %>% 
               as.data.frame() %>% 
               select(SETOR,TIPO,ALCANCE_ESPERADO3),by=c("SETOR","TIPO")) %>%
-  mutate(ALCANCE_ESPERADO=round(VALOR/ALCANCE_ESPERADO3-1,3)*100) %>% 
+  mutate(ALCANCE_ESPERADO=round(VALOR/ALCANCE_ESPERADO3-1,3)) %>% 
   mutate(INDICADOR='ALCANCE ESPERADO') %>% 
   mutate(VALOR=ALCANCE_ESPERADO3) %>% 
   select(-ALCANCE_ESPERADO3,-ALCANCE_ESPERADO) %>% 
-  mutate(VALOR=round(VALOR,2))
+  mutate(VALOR=round(VALOR,3))
 
 
 ## var alcance esperado 
@@ -193,11 +197,11 @@ var_esperado_setores <-
             result_esperado_setores %>% 
               as.data.frame() %>% 
               select(SETOR,TIPO,ALCANCE_ESPERADO3),by=c("SETOR","TIPO")) %>%
-  mutate(ALCANCE_ESPERADO=round(VALOR/ALCANCE_ESPERADO3-1,3)*100) %>% 
+  mutate(ALCANCE_ESPERADO=round(VALOR/ALCANCE_ESPERADO3-1,3)) %>% 
   mutate(INDICADOR=' VAR ALCANCE ESPERADO') %>% 
   mutate(VALOR=ALCANCE_ESPERADO) %>% 
   select(-ALCANCE_ESPERADO3,-ALCANCE_ESPERADO) %>% 
-  mutate(VALOR=round(VALOR,2))
+  mutate(VALOR=round(VALOR,3))
 
 ## BASE GERAL =========================================
 
