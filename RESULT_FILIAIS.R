@@ -25,7 +25,7 @@ result_filiais <- dbGetQuery(con_sgo, statement = read_file("C:\\Users\\REPRO SA
 ## METAS ==================================================
 
 METAS_FILIAIS_2024 <-
-  get(load("C:\\Users\\REPRO SANDRO\\Documents\\R\\RESULT\\BASES\\METAS_FILIAIS_2024.RData"))
+  get(load("C:\\Users\\REPRO SANDRO\\Documents\\R\\SUPERSET\\BASES\\METAS_FILIAIS_2024.RData"))
 
 
 ## RESULT =======================================================
@@ -34,7 +34,6 @@ result_filiais_2 <-
 result_filiais %>% 
   group_by(MES=floor_date(DATA,"month"),EMPCODIGO) %>% 
   summarize(VALOR=sum(VRLIQUIDO)) %>% mutate(INDICADOR='VENDA LIQUIDA')
-
 
 
 ## METAS =======================================================
@@ -189,6 +188,8 @@ dt_filiais <- dt_filiais %>% mutate(ID=seq(1:nrow(dt_filiais)))
 
 
 view(dt_filiais)
+
+
 
 
 ## INSERT BANCO SUPERSET =========================================
