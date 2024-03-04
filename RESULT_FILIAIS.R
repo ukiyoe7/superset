@@ -64,7 +64,6 @@ alcance_result_filiais <-
 ## feriados no ano
 
 holidays <- data.frame(DATES=c(as.Date('2024-01-01'),
-                               as.Date('2024-02-12'),
                                as.Date('2024-02-13'),
                                as.Date('2024-03-29'),
                                as.Date('2024-04-21'),
