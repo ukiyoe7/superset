@@ -25,18 +25,19 @@ result_setores_emissao <-
   new_result %>%  
    mutate(TIPO=str_trim(TIPO)) %>% 
     filter(TIPO=="EMISSAO") %>% 
-     group_by(MES=floor_date(DATA,"month"),SETOR,TIPO) %>% 
-      summarize(VALOR=sum(VRVENDA)) 
+     filter(DATA>=floor_date(Sys.Date(),"month") & DATA<Sys.Date()) %>% 
+      group_by(MES=floor_date(DATA,"month"),SETOR,TIPO) %>% 
+       summarize(VALOR=sum(VRVENDA)) 
 
-write.csv2(result_setores_emissao,file = "result_setores_emissao.csv")
 
 
 result_geral_emissao <-
   new_result %>%  
    mutate(TIPO=str_trim(TIPO)) %>% 
     filter(TIPO=="EMISSAO") %>% 
-     group_by(MES=floor_date(DATA,"month"),SETOR='GERAL',TIPO) %>% 
-      summarize(VALOR=sum(VRVENDA)) 
+     filter(DATA>=floor_date(Sys.Date(),"month") & DATA<Sys.Date()) %>%
+      group_by(MES=floor_date(DATA,"month"),SETOR='GERAL',TIPO) %>% 
+       summarize(VALOR=sum(VRVENDA)) 
 
 
 ## BAIXA
@@ -44,24 +45,79 @@ result_geral_emissao <-
 result_setores_baixa <-
 new_result %>%  
    mutate(TIPO=str_trim(TIPO)) %>% 
-    filter(TIPO=="BAIXA") %>% 
-     group_by(MES=floor_date(DATA,"month"),SETOR,TIPO) %>% 
-      summarize(VALOR=sum(VRVENDA)) 
+    filter(TIPO=="BAIXA") %>%
+     filter(DATA>=floor_date(Sys.Date(),"month") & DATA<Sys.Date()) %>% 
+      group_by(MES=floor_date(DATA,"month"),SETOR,TIPO) %>% 
+       summarize(VALOR=sum(VRVENDA)) 
 
 
 result_geral_baixa <-
   new_result %>%  
    mutate(TIPO=str_trim(TIPO)) %>% 
     filter(TIPO=="BAIXA") %>% 
-     group_by(MES=floor_date(DATA,"month"),SETOR='GERAL',TIPO) %>% 
-      summarize(VALOR=sum(VRVENDA)) 
+     filter(DATA>=floor_date(Sys.Date(),"month") & DATA<Sys.Date()) %>% 
+      group_by(MES=floor_date(DATA,"month"),SETOR='GERAL',TIPO) %>% 
+       summarize(VALOR=sum(VRVENDA)) 
 
 
 new_result2 <-
  union_all(result_setores_emissao,result_geral_emissao) %>% 
    union_all(.,result_setores_baixa) %>% 
      union_all(.,result_geral_baixa) %>% 
+      filter(floor_date(MES,"year")==as.Date(floor_date(Sys.Date(),"year"))) %>% 
       mutate(INDICADOR='RESULTADO MES') %>% mutate(VALOR=round(VALOR,2))
+
+
+## ANO PASSADO ==========================================================
+
+
+## EMISSAO
+
+result_setores_emissao_ano_passado <-
+  new_result %>%  
+  mutate(TIPO=str_trim(TIPO)) %>% 
+  filter(TIPO=="EMISSAO") %>% 
+  filter(DATA>=floor_date(Sys.Date()-1-years(1),"month") & DATA<=floor_date(Sys.Date()-1-years(1),"day")) %>% 
+  group_by(MES=floor_date(DATA,"month"),SETOR,TIPO) %>% 
+  summarize(VALOR=sum(VRVENDA)) 
+
+
+
+result_geral_emissao_ano_passado <-
+  new_result %>%  
+  mutate(TIPO=str_trim(TIPO)) %>% 
+  filter(TIPO=="EMISSAO") %>% 
+  filter(DATA>=floor_date(Sys.Date()-1-years(1),"month") & DATA<=floor_date(Sys.Date()-1-years(1),"day")) %>% 
+  group_by(MES=floor_date(DATA,"month"),SETOR='GERAL',TIPO) %>% 
+  summarize(VALOR=sum(VRVENDA)) 
+
+
+## BAIXA
+
+result_setores_baixa_ano_passado <-
+  new_result %>%  
+  mutate(TIPO=str_trim(TIPO)) %>% 
+  filter(TIPO=="BAIXA") %>%
+  filter(DATA>=floor_date(Sys.Date()-1-years(1),"month") & DATA<=floor_date(Sys.Date()-1-years(1),"day")) %>% 
+  group_by(MES=floor_date(DATA,"month"),SETOR,TIPO) %>% 
+  summarize(VALOR=sum(VRVENDA)) 
+
+
+result_geral_baixa_ano_passado <-
+  new_result %>%  
+  mutate(TIPO=str_trim(TIPO)) %>% 
+  filter(TIPO=="BAIXA") %>% 
+  filter(DATA>=floor_date(Sys.Date()-1-years(1),"month") & DATA<=floor_date(Sys.Date()-1-years(1),"day")) %>% 
+  group_by(MES=floor_date(DATA,"month"),SETOR='GERAL',TIPO) %>% 
+  summarize(VALOR=sum(VRVENDA)) 
+
+
+new_result2_ano_passado <-
+  union_all(result_setores_emissao_ano_passado,result_geral_emissao_ano_passado) %>% 
+  union_all(.,result_setores_baixa_ano_passado) %>% 
+  union_all(.,result_geral_baixa_ano_passado) %>% 
+  mutate(INDICADOR='RESULTADO MES ANO PASSADO') %>% mutate(VALOR=round(VALOR,2))
+
 
 
 ## METAS ==================================================
@@ -114,7 +170,6 @@ alcance_result <-
 ## feriados no ano
 
 holidays <- data.frame(DATES=c(as.Date('2024-01-01'),
-                               as.Date('2024-02-12'),
                                as.Date('2024-02-13'),
                                as.Date('2024-03-29'),
                                as.Date('2024-04-21'),
@@ -189,7 +244,7 @@ result_esperado_setores2 <-
   mutate(VALOR=round(VALOR,3))
 
 
-## var alcance esperado 
+## VAR ALCANCE ESPERADO ===================
 
 
 var_esperado_setores <- 
@@ -223,7 +278,11 @@ dt <-
   
   union_all(. ,  
             
-            var_esperado_setores %>% .[,corder])  %>% 
+            var_esperado_setores %>% .[,corder])  %>%
+  
+  union_all(. ,  
+            
+            new_result2_ano_passado %>% .[,corder])  %>% 
   
   as.data.frame()
 
@@ -268,6 +327,7 @@ if (nrow(dt) == 0) {
 # Fechar conexões
 dbDisconnect(con_spset)
 dbDisconnect(con_sgo)
+
 
 
 
