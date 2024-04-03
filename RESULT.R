@@ -172,7 +172,6 @@ alcance_result <-
 holidays <- data.frame(DATES=c(as.Date('2024-01-01'),
                                as.Date('2024-02-13'),
                                as.Date('2024-03-29'),
-                               as.Date('2024-04-21'),
                                as.Date('2024-05-01'),
                                as.Date('2024-05-30'),
                                as.Date('2024-11-15'),
